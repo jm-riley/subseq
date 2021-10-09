@@ -4,6 +4,8 @@
 Subseq consists of two sequencers, each advanced by a pair of independent clock dividers. By default they are set up to send midi out to ch 1 and 2, but the internal engine can also be turned on for each one individually. 
 Scale, root note, and basic set of engine params are accessible in the params menu.
 
+![subseq](https://user-images.githubusercontent.com/45906220/136644539-03f425b3-d9fa-4d9d-bf5e-10746a654cef.png)
+
 ### controls
 e1: swaps sequencer control  
 k1 held: alt  
