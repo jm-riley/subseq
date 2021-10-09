@@ -1,7 +1,18 @@
+-- subseq is made up of two sequencers, each advanced by a pair of independent clock dividers
+-- internal synth can be turned on/off per sequencer
+-- defaults: internal off, seq 1 => midi ch 1, seq 2 => midi ch 2
+-- e1: switches sequencer control
+-- k1 held: alt
+-- k2, k3: rhythm toggles for selected sequencer
+-- alt + k2: reset both sequencers
+-- alt + k3: mute selected step
+-- e2: set step pitch
+-- e3: select step
+-- alt + e2, alt + e3: set rhythm divisions
+
 lattice = include("lib/lattice")
 MusicUtil = require("musicutil")
 engine.name = "PolyPerc"
-playing = true
 
 notes_nums = MusicUtil.generate_scale()
 scale_names = {}
@@ -27,38 +38,90 @@ rhythm_2_on = true
 rhythm_3_on = false
 rhythm_4_on = false
 
-for i = 1, 4 do
+
+function add_params()
+  midi_channels = {'off'}
+  for i = 2,16 do
+    midi_channels[i] = i
+  end
   params:add{
-    type='option', id='rhythm_'..i, name='rhythm '..i,
-    options= divisions, default=9,
-    action= function (val) set_rhythm_division(val, i) end
+    type = "option", id = "scale", name = "scale",
+    options = scale_names, default = 5,
+    action = function() build_scale() end
   }
+  params:add_separator('sequencer 1')
+  params:add{
+    type= 'number', id='root_note_seq_1', name='root note seq 1',
+    min=0,max=127,default=60,
+    formatter= function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
+    action=function() build_scale() end
+  }
+  for i = 1, 2 do
+    params:add{
+      type='option', id='rhythm_'..i, name='rhythm '..i,
+      options= divisions, default=9,
+      action= function (val) set_rhythm_division(val, i) end
+    }
+  end
+  params:add{
+    type='option', id='seq_1_midi_out', name='seq 1 midi out',
+    options = midi_channels, default = 2
+  }
+  
+  params:add{
+    type='option', id='seq_1_internal', name='seq 1 internal',
+    options = {'off', 'on'}, default = 1
+  }
+  params:add_separator('sequencer 2')
+  params:add{
+    type= 'number', id='root_note_seq_2', name='root note seq 2',
+    min=0,max=127,default=48,
+    formatter= function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
+    action=function() build_scale() end
+  }
+  for i = 3, 4 do
+    params:add{
+      type='option', id='rhythm_'..i, name='rhythm '..i,
+      options= divisions, default=9,
+      action= function (val) set_rhythm_division(val, i) end
+    }
+  end
+  params:add{
+    type='option', id='seq_2_midi_out', name='seq 2 midi out',
+    options = midi_channels, default = 3
+  }
+  params:add{
+    type='option', id='seq_2_internal', name='seq 2 internal',
+    options = {'off', 'on'}, default = 1
+  }
+  
+  params:add_separator('engine')
+  
+  cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
+  params:add{type="control",id="amp",controlspec=cs_AMP,
+    action=function(x) engine.amp(x) end}
+  
+  cs_PW = controlspec.new(0,100,'lin',0,50,'%')
+  params:add{type="control",id="pw",controlspec=cs_PW,
+    action=function(x) engine.pw(x/100) end}
+  
+  cs_REL = controlspec.new(0.1,3.2,'lin',0,1.2,'s')
+  params:add{type="control",id="release",controlspec=cs_REL,
+    action=function(x) engine.release(x) end}
+  
+  cs_CUT = controlspec.new(50,5000,'exp',0,800,'hz')
+  params:add{type="control",id="cutoff",controlspec=cs_CUT,
+    action=function(x) engine.cutoff(x) end}
+  
+  cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
+  params:add{type="control",id="gain",controlspec=cs_GAIN,
+    action=function(x) engine.gain(x) end}
+  
+  cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
+  params:add{type="control",id="pan",controlspec=cs_PAN,
+    action=function(x) engine.pan(x) end}
 end
 
-midi_channels = {'off'}
-for i = 1,16 do
-  midi_channels[i + 1] = i
-end
-
-params:add{
-  type='option', id='seq_1_midi_out', name='seq 1 midi out',
-  options = midi_channels, default = 2
-}
-
-params:add{
-  type='option', id='seq_2_midi_out', name='seq 2 midi out',
-  options = midi_channels, default = 3
-}
-
-params:add{
-  type='option', id='seq_1_internal', name='seq 1 internal',
-  options = {'off', 'on'}, default = 1
-}
-
-params:add{
-  type='option', id='seq_2_internal', name='seq 2 internal',
-  options = {'off', 'on'}, default = 1
-}
 
 function set_rhythm_division(val, rhythm)
   if rhythm == 1 then
@@ -77,18 +140,7 @@ function init()
   m = midi.connect(1)
   m:clock()
   engine.release(1)
-  
-  params:add{
-    type= 'number', id='root_note', name='root note',
-    min=0,max=127,default=60,
-    formatter= function(param) return MusicUtil.note_num_to_name(param:get(), true) end,
-    action=function() build_scale() end
-  }
-  params:add{
-    type = "option", id = "scale", name = "scale",
-    options = scale_names, default = 5,
-    action = function() build_scale() end
-  }
+  add_params()
   build_scale()
   my_lattice = lattice:new{ppqn = 8}
 
@@ -120,20 +172,19 @@ function init()
 end
 
 function sequence_step(t, seq)
-  print(t == last_called and last_seq == seq)
   if t == last_called and last_seq == seq then 
     return 
   end
-  local seq_step
+  local seq_step, note_nums, note_freqs
   if seq == seq_1 then
     seq_1_step = util.wrap(seq_1_step + 1, 1, seq_1_length)
-    seq_step = seq_1_step
+    note_nums, note_freqs, seq_step = note_nums_1, note_freqs_1, seq_1_step
   else
     seq_2_step = util.wrap(seq_2_step + 1, 1, seq_2_length)
-    seq_step = seq_2_step
+    note_nums, note_freqs, seq_step = note_nums_2, note_freqs_2, seq_2_step
   end
   if seq[seq_step][2] == true then
-    local note_freq = notes_freq[seq[seq_step][1]]
+    local note_freq = note_freqs[seq[seq_step][1]]
     local internal_on = (seq == seq_1 and params:get('seq_1_internal') or params:get('seq_2_internal')) ~= 1
     if internal_on then
       engine.hz(note_freq)
@@ -151,9 +202,12 @@ function sequence_step(t, seq)
 end
 
 function build_scale()
-  note_nums = MusicUtil.generate_scale(params:get('root_note'), params:get('scale'), 2)
-  notes_freq = MusicUtil.note_nums_to_freqs(note_nums)
-  note_names = MusicUtil.note_nums_to_names(note_nums, true)
+  note_nums_1 = MusicUtil.generate_scale(params:get('root_note_seq_1'), params:get('scale'), 2)
+  note_freqs_1 = MusicUtil.note_nums_to_freqs(note_nums_1)
+  note_names_1 = MusicUtil.note_nums_to_names(note_nums_1, true)
+  note_nums_2 = MusicUtil.generate_scale(params:get('root_note_seq_2'), params:get('scale'), 2)
+  note_freqs_2 = MusicUtil.note_nums_to_freqs(note_nums_2)
+  note_names_2 = MusicUtil.note_nums_to_names(note_nums_2, true)
 end
 
 alt = false
@@ -207,7 +261,7 @@ function enc(e, d)
     if alt then
       params:set('rhythm_'..rhythms[1], params:get('rhythm_'..rhythms[1]) + d)
     else
-      selected_seq[edit_pos][1] = util.clamp(selected_seq[edit_pos][1]+d,1,#notes_freq)
+      selected_seq[edit_pos][1] = util.clamp(selected_seq[edit_pos][1]+d,1,#note_freqs_1)
     end
   elseif e == 3 then
     if alt then
@@ -287,6 +341,7 @@ function render_divisions()
 end
 
 function redraw()
+  local note_names = selected_seq == seq_1 and note_names_1 or note_names_2
   screen.clear()
   screen.level(16)
   screen.aa(1)
