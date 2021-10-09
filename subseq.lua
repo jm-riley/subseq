@@ -141,7 +141,7 @@ function init()
   engine.release(1)
   add_params()
   build_scale()
-  my_lattice = lattice:new{ppqn = 8}
+  my_lattice = lattice:new{ppqn = 24}
 
   pattern_a = my_lattice:new_pattern{
     action = function(t) sequence_step(t, seq_1) end,
