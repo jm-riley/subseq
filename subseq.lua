@@ -1,14 +1,13 @@
--- subseq is made up of two sequencers, each advanced by a pair of independent clock dividers
--- internal synth can be turned on/off per sequencer
--- defaults: internal off, seq 1 => midi ch 1, seq 2 => midi ch 2
--- e1: switches sequencer control
+-- subseq
+--
+-- e1: swaps sequencer control
 -- k1 held: alt
--- k2, k3: rhythm toggles for selected sequencer
--- alt + k2: reset both sequencers
--- alt + k3: mute selected step
+-- k2,k3: rhythm toggles
+-- alt+k2: reset both sequencers
+-- alt+k3: mute selected step
 -- e2: set step pitch
 -- e3: select step
--- alt + e2, alt + e3: set rhythm divisions
+-- alt+e2,alt+e3: rhythm divisions
 
 lattice = include("lib/lattice")
 MusicUtil = require("musicutil")
