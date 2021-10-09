@@ -40,8 +40,8 @@ rhythm_4_on = false
 
 function add_params()
   midi_channels = {'off'}
-  for i = 2,16 do
-    midi_channels[i] = i
+  for i = 1,16 do
+    midi_channels[i + 1] = i
   end
   params:add{
     type = "option", id = "scale", name = "scale",
