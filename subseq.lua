@@ -8,12 +8,10 @@
 -- e2: set step pitch
 -- e3: select step
 -- alt+e2,alt+e3: rhythm divisions
-
 lattice = include("lib/lattice")
 MusicUtil = require("musicutil")
 engine.name = "PolyPerc"
 
-notes_nums = MusicUtil.generate_scale()
 scale_names = {}
 for i = 1, #MusicUtil.SCALES do
   table.insert(scale_names, MusicUtil.SCALES[i].name)
@@ -93,29 +91,29 @@ function add_params()
     type='option', id='seq_2_internal', name='seq 2 internal',
     options = {'off', 'on'}, default = 1
   }
-  
+
   params:add_separator('engine')
-  
+
   cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
   params:add{type="control",id="amp",controlspec=cs_AMP,
     action=function(x) engine.amp(x) end}
-  
+
   cs_PW = controlspec.new(0,100,'lin',0,50,'%')
   params:add{type="control",id="pw",controlspec=cs_PW,
     action=function(x) engine.pw(x/100) end}
-  
+
   cs_REL = controlspec.new(0.1,3.2,'lin',0,1.2,'s')
   params:add{type="control",id="release",controlspec=cs_REL,
     action=function(x) engine.release(x) end}
-  
+
   cs_CUT = controlspec.new(50,5000,'exp',0,800,'hz')
   params:add{type="control",id="cutoff",controlspec=cs_CUT,
     action=function(x) engine.cutoff(x) end}
-  
+
   cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
   params:add{type="control",id="gain",controlspec=cs_GAIN,
     action=function(x) engine.gain(x) end}
-  
+
   cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
   params:add{type="control",id="pan",controlspec=cs_PAN,
     action=function(x) engine.pan(x) end}
@@ -190,7 +188,7 @@ function sequence_step(t, seq)
     end
     local midi_ch_param = seq == seq_1 and params:get('seq_1_midi_out') or params:get('seq_2_midi_out')
     -- midi_ch_param 1 == 'off'
-    if midi_ch_pararm ~= 1 then
+    if midi_ch_param ~= 1 then
       m:note_on(note_nums[seq[seq_step][1]], 100, midi_ch_param - 1)
       m:note_off(note_nums[seq[seq_step][1]], 100, midi_ch_param - 1)
     end
